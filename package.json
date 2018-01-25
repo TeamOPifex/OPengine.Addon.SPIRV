@@ -1,0 +1,11 @@
+{
+  "id": "spirv",
+  "name": "SPIR-V",
+  "version": "0.0.1",
+  "OPengine": ">=0.5.1",
+  "image": "cover.png",
+  "repositories": [{
+    "url" : "https://github.com/KhronosGroup/SPIRV-Cross.git",
+    "target"  : "repo"
+  }]
+}

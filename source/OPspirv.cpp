@@ -2,13 +2,15 @@
 
 #include "./Core/include/OPlog.h"
 #include "./Data/include/OPcman.h"
+#include "./Data/include/OPstring.h"
 #include "./Human/include/Rendering/OPshader.h"
+#include "./Human/include/Rendering/OPrender.h"
 
 #include "spirv_glsl.hpp"
 #include <vector>
 #include <utility>
 
-OPint OPloaderOPspvLoad(OPstream* str, OPshader** shader) {
+OPint OPloaderOPspvLoad(OPshaderType::Enum shaderType, OPstream* str, OPshader** shader) {
     OPlogErr("Loading SPV %d", str->Size);
 
 
@@ -33,30 +35,61 @@ OPint OPloaderOPspvLoad(OPstream* str, OPshader** shader) {
 
 	// Set some options.
 	spirv_cross::CompilerGLSL::Options options;
-	options.version = 310;
-	options.es = true;
+	options.version = 330;
+	options.es = false;
 	glsl.set_options(options);
 
 	// Compile to GLSL, ready to give to GL driver.
 	std::string source = glsl.compile();
 
-    OPlogErr("Shader Result: %s", source.c_str());
+    // OPlogErr("Shader Result: %s", source.c_str());
 
-    return 1;
+	*shader = OPRENDERER_ACTIVE->Shader.Create(shaderType, source.c_str(), source.length());
+#ifdef _DEBUG
+	(*shader)->source = OPstringCopy(source.c_str());
+#endif
+
+	return 1;
+}
+
+
+OPint OPloaderOPspvLoadVert(OPstream* str, OPshader** shader) {
+	OPlogErr("Loading SPV Vert!");
+	return OPloaderOPspvLoad(OPshaderType::Enum::VERTEX, str, shader);
+}
+
+OPint OPloaderOPspvLoadFrag(OPstream* str, OPshader** shader) {
+	OPlogErr("Loading SPV Frag!");
+	return OPloaderOPspvLoad(OPshaderType::Enum::FRAGMENT, str, shader);
 }
 
 OPint OPloaderOPspvUnload(OPshader* shader) {
-    return 1;
+#ifdef _DEBUG
+	OPfree(shader->source);
+#endif
+	OPRENDERER_ACTIVE->Shader.Destroy(shader);
+	OPfree(shader); // free up the integer
+	return 1;
 }
 
 void OPsprivAddLoader() {
-	OPassetLoader loader = {
-		".spv",
+	OPassetLoader loaderVert = {
+		".vertspv",
 		"SPV/",
 		sizeof(OPshader),
-		(OPint(*)(OPstream*, void**))OPloaderOPspvLoad,
+		(OPint(*)(OPstream*, void**))OPloaderOPspvLoadVert,
 		(OPint(*)(void*))OPloaderOPspvUnload,
 		NULL
 	};
-	OPCMAN.AddLoader(&loader);
+	OPCMAN.AddLoader(&loaderVert);
+
+	OPassetLoader loaderFrag = {
+		".fragspv",
+		"SPV/",
+		sizeof(OPshader),
+		(OPint(*)(OPstream*, void**))OPloaderOPspvLoadFrag,
+		(OPint(*)(void*))OPloaderOPspvUnload,
+		NULL
+	};
+	OPCMAN.AddLoader(&loaderFrag);
 }
